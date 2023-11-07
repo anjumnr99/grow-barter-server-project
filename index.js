@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
 
 const app = express()
@@ -31,6 +31,7 @@ async function run() {
     await client.connect();
 
     const serviceCollection = client.db("servicesDB").collection("services");
+    const bookingCollection = client.db("bookingDB").collection("bookings");
 
     app.get('/services', async (req, res) => {
       const cursor = serviceCollection.find();
@@ -40,8 +41,15 @@ async function run() {
 
     app.get('/services/:id', async (req, res) => {
       const ids = req.params.id;
-      const query = { _id: new ObjectId(ids) }
-      const result = await productCollection.findOne(query)
+      const query = { _id : new ObjectId(ids) }
+      const result = await serviceCollection.findOne(query)
+      res.send(result)
+    });
+
+    app.post('/bookings', async (req, res) => {
+      const booking = req.body;
+      console.log(booking);
+      const result = await bookingCollection.insertOne(booking);
       res.send(result)
     });
 
