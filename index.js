@@ -168,6 +168,30 @@ async function run() {
       res.send(result);
   });
 
+  app.put('/my-services/update/:id', async(req,res)=>{
+    const ids = req.params.id;
+    const filter = {_id : new ObjectId(ids)};
+    const options = { upsert: true };
+    const updatedProduct = req.body;
+    const product ={
+        $set : {
+           
+           Service_Name :updatedProduct.Service_Name,
+           Service_Image :updatedProduct.Service_Image,
+           Service_Description :updatedProduct.Service_Description,
+           Service_Price :updatedProduct.Service_Price,
+           Service_Area :updatedProduct.Service_Area,
+           Service_Provider_Name :updatedProduct.Service_Provider_Name,
+           Service_Provider_Email :updatedProduct.Service_Provider_Email
+           
+       }
+    }
+
+    const result = await serviceCollection.updateOne(filter,product,options);
+    res.send(result)
+
+})
+
   
 
     app.post('/services', async (req, res) => {
