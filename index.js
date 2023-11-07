@@ -52,6 +52,12 @@ async function run() {
       const result = await bookingCollection.insertOne(booking);
       res.send(result)
     });
+    app.post('/services', async (req, res) => {
+      const newService = req.body;
+      console.log(newService);
+      const result = await serviceCollection.insertOne(newService);
+      res.send(result)
+    });
 
 
     // Send a ping to confirm a successful connection
