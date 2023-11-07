@@ -1,18 +1,50 @@
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
-
+const jwt = require('jsonwebtoken');
+const cookieParser = require('cookie-parser')
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
 
-const app = express()
+const app = express();
 
 const port = process.env.PORT || 5000;
 
 //middleware
 app.use(express.json());
-app.use(cors());
+app.use(cookieParser());
+app.use(cors({
+  origin: ['http://localhost:5173'],
+  credentials: true,
+  
+}));
 
+
+//middlewares
+
+const logger = async(req,res,next) =>{
+  console.log("called", req.hostname , req.originalUrl);
+  next();
+}
+
+const verifyToken = async (req, res, next) => {
+  const token = req.cookies?.token;
+  console.log('Value of token in the middleware', token);
+  if (!token) {
+    return res.status(401).send({ message: "Unauthorized" })
+  }
+
+  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decode) => {
+    if (err) {
+      return res.status(401).send({ message: "Unauthorized" })
+    }
+    // if token is valid it would be in the decode
+    console.log('Value in the token is : ', decode);
+    req.userInfo = decode;
+
+    next();
+  })
+}
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.7nwjyzo.mongodb.net/?retryWrites=true&w=majority`;
 
@@ -33,6 +65,21 @@ async function run() {
     const serviceCollection = client.db("servicesDB").collection("services");
     const bookingCollection = client.db("bookingDB").collection("bookings");
 
+    // auth related API
+
+    app.post('/jwt',logger, async (req, res) => {
+      const user = req.body;
+      console.log(user);
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' })
+      res       // setting the token in cookie
+      .cookie('token', token, {  
+              httpOnly: true,
+              secure: true, 
+              sameSite : 'none'
+          })
+      .send({ success: true })
+  })
+
     app.get('/services', async (req, res) => {
       const cursor = serviceCollection.find();
       const result = await cursor.toArray();
@@ -41,7 +88,7 @@ async function run() {
 
     app.get('/services/:id', async (req, res) => {
       const ids = req.params.id;
-      const query = { _id : new ObjectId(ids) }
+      const query = { _id: new ObjectId(ids) }
       const result = await serviceCollection.findOne(query)
       res.send(result)
     });
@@ -52,6 +99,48 @@ async function run() {
       const result = await bookingCollection.insertOne(booking);
       res.send(result)
     });
+
+    app.get('/bookings',logger,verifyToken, async (req, res) => {
+      console.log(req.query.email);
+      console.log('userInfo from the valid token', req.userInfo);
+      if(req.query?.email !== req.userInfo.email){
+          return res.status(403).send({message : "Forbidden Access"});
+      }
+  
+      let query = {};
+      if (req.query?.email) {
+          query = { 
+            user_email: req.query.email
+            
+          }
+      }
+      const result = await bookingCollection.find(query).toArray();
+      res.send(result);
+  });
+    app.get('/pending-work',logger,verifyToken, async (req, res) => {
+      console.log(req.query.email);
+      console.log('userInfo from the valid token', req.userInfo);
+      if(req.query?.email !== req.userInfo.email){
+          return res.status(403).send({message : "Forbidden Access"});
+      }
+  
+      let query = {};
+      if (req.query?.email) {
+          query = {
+            Service_Provider_Email: req.query.email
+          }
+      }
+
+      const options = {
+        // Include only the `title` and `imdb` fields in the returned document
+        projection: { Service_Name: 1, Service_Image: 1, booking_date: 1, service_status: 1 },
+    };
+      const result = await bookingCollection.find(query,options).toArray();
+      res.send(result);
+  });
+
+  
+
     app.post('/services', async (req, res) => {
       const newService = req.body;
       console.log(newService);
