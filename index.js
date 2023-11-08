@@ -14,10 +14,13 @@ const port = process.env.PORT || 5000;
 app.use(express.json());
 app.use(cookieParser());
 app.use(cors({
-  origin: ['http://localhost:5173'],
+  origin: ['http://localhost:5173','https://grow-barter-project.web.app'],
   credentials: true,
 
 }));
+
+
+
 
 
 //middlewares
@@ -60,7 +63,7 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    // await client.connect();
 
     const serviceCollection = client.db("servicesDB").collection("services");
     const bookingCollection = client.db("bookingDB").collection("bookings");
